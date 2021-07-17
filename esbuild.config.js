@@ -10,6 +10,7 @@ esbuild
     minify: true,
     bundle: true,
     define: { "process.env.NODE_ENV": "'production'" },
+    sourcemap: true,
     watch: isWatch && {
       onRebuild(err) {
         serve.update();
