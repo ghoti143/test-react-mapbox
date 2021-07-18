@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import { LngLatBounds, Map } from "mapbox-gl";
 import "./App.css";
 import { queryFeatures } from "@esri/arcgis-rest-feature-layer";
@@ -39,26 +39,45 @@ export default () => {
     });
   };
 
+  const debounce = (callback, wait) => {
+    let timeoutId = null;
+    return (...args) => {
+      window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => {
+        callback.apply(null, args);
+      }, wait);
+    };
+  };
+
+  const loadAirports = () => {
+    if (!map.current) return; // wait for map to initialize
+    var foo: LngLatBounds = map.current.getBounds();
+    console.log(foo);
+    var bar: IEnvelope = {
+      xmin: foo.getWest(),
+      ymin: foo.getSouth(),
+      xmax: foo.getEast(),
+      ymax: foo.getNorth(),
+      spatialReference: {
+        wkid: 4326,
+      },
+    };
+    executeQuery(bar);
+  };
+
+  const debouncedLoadAirports = useCallback(debounce(loadAirports, 250), []);
+
   useEffect(() => {
     if (!map.current) return; // wait for map to initialize
     map.current.on("moveend", () => {
       setLng(map.current.getCenter().lng.toFixed(4));
       setLat(map.current.getCenter().lat.toFixed(4));
       setZoom(map.current.getZoom().toFixed(2));
-
-      var foo: LngLatBounds = map.current.getBounds();
-      console.log(foo);
-      var bar: IEnvelope = {
-        xmin: foo.getWest(),
-        ymin: foo.getSouth(),
-        xmax: foo.getEast(),
-        ymax: foo.getNorth(),
-        spatialReference: {
-          wkid: 4326,
-        },
-      };
-      executeQuery(bar);
     });
+
+    map.current.on("moveend", loadAirports);
+    map.current.on("move", debouncedLoadAirports);
+
     map.current.on("load", () => {
       // This code runs once the base style has finished loading.
 
